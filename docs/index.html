@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Raktantra Book Live</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    body { max-width: 760px; margin: 2em auto; font-family: system-ui, sans-serif; background: #f8fafc; color: #222; }
+    h1, h2, h3 { color: #1e293b; }
+    #progress-bar { height:24px; background:#eee; border-radius:8px; overflow:hidden; }
+    #progress-fill { height:100%; background:#3b82f6; width:0%; transition:width 0.7s }
+    textarea { width:100%; font-size:1em; }
+    button { padding:.5em 1.5em; font-size:1em; }
+    section { margin-bottom: 2em; }
+    #suggest-response { color: #059669; font-weight: bold; margin-top: .5em; }
+  </style>
+</head>
+<body>
+  <h1>Raktantra Book: Live Progress</h1>
+  <section>
+    <h2>Progress</h2>
+    <div id="progress-bar">
+      <div id="progress-fill"></div>
+    </div>
+    <p id="progress-status"></p>
+  </section>
+  <section>
+    <h2>Book</h2>
+    <article id="book-content">Loading book...</article>
+  </section>
+  <section>
+    <h2>Suggest an Edit</h2>
+    <form id="suggest-form">
+      <input placeholder="Your name (optional)" name="name"><br>
+      <textarea name="suggestion" required placeholder="Your suggestion" rows=4></textarea><br>
+      <button type="submit">Send Suggestion</button>
+    </form>
+    <div id="suggest-response"></div>
+  </section>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    // These are your actual project keys!
+    const SUPABASE_URL = 'https://xbgwsocyycwcsrsbwccv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiZ3dzb2N5eWN3Y3Nyc2J3Y2N2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwMTc5MTUsImV4cCI6MjA2NTU5MzkxNX0.yInOA1Jwo8SI7-i4vt-FPtBLTfdYt2MPh3rn3Reo-5w';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Fetch progress
+    supabase.from('progress').select('*').order('updated_at', {ascending: false}).limit(1).then(({data})=>{
+      if(data && data.length) {
+        const progress = data[0];
+        document.getElementById('progress-fill').style.width = progress.percent + '%';
+        document.getElementById('progress-status').textContent = progress.status + ' ('+progress.percent+'%)';
+      }
+    });
+
+    // Fetch book
+    supabase.from('book').select('*').order('updated_at', {ascending: false}).limit(1).then(({data})=>{
+      if(data && data.length) {
+        // Simple markdown rendering (headings/paragraphs)
+        document.getElementById('book-content').innerHTML =
+          data[0].content
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/\n/g, '<br/>');
+      }
+    });
+
+    // Suggestion form
+    document.getElementById('suggest-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const name = formData.get('name');
+      const suggestion = formData.get('suggestion');
+      await supabase.from('suggestions').insert([{name, suggestion}]);
+      document.getElementById('suggest-response').textContent = 'Thank you for your suggestion!';
+      e.target.reset();
+    };
+  </script>
+</body>
+</html>
